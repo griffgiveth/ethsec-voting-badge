@@ -172,3 +172,57 @@ describe("POST /submit", () => {
     expect(res.json().error).toBe("timestamp_expired");
   });
 });
+
+describe("POST /submit (with onchain ownership checker)", () => {
+  let app: Awaited<ReturnType<typeof buildServer>>;
+  let dispose: () => Promise<void>;
+  let reset: () => Promise<void>;
+  let nextOwnership: { ownsThisToken: boolean; balance: bigint };
+
+  beforeAll(async () => {
+    process.env.BADGE_CONTRACT = BADGE_CONTRACT;
+    process.env.CHAIN_ID = String(CHAIN_ID);
+    process.env.ENCRYPTION_PUBLIC_KEY_HEX = "0xdeadbeef";
+    process.env.DATABASE_URL = "postgres://test:test@localhost:5432/test";
+    nextOwnership = { ownsThisToken: true, balance: 1n };
+    const t = await makeTestDb();
+    dispose = t.dispose;
+    reset = t.reset;
+    app = await buildServer({
+      db: t.db,
+      ownership: { check: async () => nextOwnership },
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
+    await dispose();
+  });
+
+  it("403 not_owner when checker reports !ownsThisToken", async () => {
+    await reset();
+    nextOwnership = { ownsThisToken: false, balance: 1n };
+    const body = await makeValidSubmission({ tokenId: "2001" });
+    const res = await app.inject({ method: "POST", url: "/submit", payload: body });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe("not_owner");
+  });
+
+  it("403 multi_badge_or_zero when balance != 1", async () => {
+    await reset();
+    nextOwnership = { ownsThisToken: true, balance: 2n };
+    const body = await makeValidSubmission({ tokenId: "2002" });
+    const res = await app.inject({ method: "POST", url: "/submit", payload: body });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error).toBe("multi_badge_or_zero");
+  });
+
+  it("200 when ownership checker passes", async () => {
+    await reset();
+    nextOwnership = { ownsThisToken: true, balance: 1n };
+    const body = await makeValidSubmission({ tokenId: "2003" });
+    const res = await app.inject({ method: "POST", url: "/submit", payload: body });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+  });
+});
