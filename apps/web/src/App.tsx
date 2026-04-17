@@ -1,16 +1,23 @@
+import { useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { WalletConnect } from "./components/WalletConnect.js";
 import { TokenInput } from "./components/TokenInput.js";
 import { Progress } from "./components/Progress.js";
 import { Submitted } from "./components/Submitted.js";
 import { ErrorState } from "./components/ErrorState.js";
+import { AdminPage } from "./components/AdminPage.js";
 import { useSubmission } from "./hooks/useSubmission.js";
 import { expectedChain } from "./wagmi.js";
 
 export default function App(): JSX.Element {
+  const [view, setView] = useState<"voter" | "admin">("voter");
   const { address, status: accountStatus } = useAccount();
   const chainId = useChainId();
   const { state, start, reset } = useSubmission();
+
+  if (view === "admin") {
+    return <AdminPage onBack={() => setView("voter")} />;
+  }
 
   const wrongChain = accountStatus === "connected" && chainId !== expectedChain.id;
   const canStart =
@@ -39,7 +46,7 @@ export default function App(): JSX.Element {
         {/* Wallet */}
         <WalletConnect />
 
-        {/* Wrong chain warning — RainbowKit handles switching, but show a hint */}
+        {/* Wrong chain warning */}
         {wrongChain && (
           <div className="rounded-xl border border-brand-red-500/30 bg-brand-red-500/10 p-4 text-center text-sm text-white/80">
             Please switch to <span className="font-medium text-white">{expectedChain.name}</span> in the wallet modal above.
@@ -77,8 +84,14 @@ export default function App(): JSX.Element {
         )}
 
         {/* Footer */}
-        <footer className="text-center text-xs text-white/30 pt-4">
-          ETHSecurity Voting Badge &middot; DAO.fund
+        <footer className="text-center text-xs text-white/30 pt-6 space-y-2">
+          <p>ETHSecurity Voting Badge &middot; DAO.fund</p>
+          <button
+            onClick={() => setView("admin")}
+            className="text-white/20 hover:text-white/40 text-xs transition-colors"
+          >
+            Admin
+          </button>
         </footer>
       </div>
     </main>
