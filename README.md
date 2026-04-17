@@ -36,6 +36,79 @@ One badge = one submission. Re-submitting from the same badge is rejected.
 
 ---
 
+## For badgeholders — air-gapped signing
+
+If you don't want your signing wallet to touch the internet — cold wallet,
+hardware-only setup, audited build environment — you can sign the submission
+on one machine and post it from another. Two flavours:
+
+### Flavour A — signed from ANY internet-connected machine, posted LATER
+
+Useful when the signing session and the submission session are separated in
+time, or when you want a record of exactly what you signed before it hits
+the server.
+
+1. On the signing machine, open the hosted URL and connect your wallet as
+   usual.
+2. In the form, tick **"Sign offline — export signed blob"** before clicking
+   Encrypt & Sign. The app encrypts + signs as normal but downloads the
+   resulting payload as `ethsec-submission-badge-<id>.json` instead of
+   POSTing to the server.
+3. Transfer that JSON to any internet-connected machine (USB, email,
+   Signal — it's signed, so it can't be altered without invalidating).
+4. From the hosted URL on that machine, click **"Upload signed blob"** in
+   the footer, pick the file, submit. No wallet needed on this machine.
+
+Alternative to step 4 — submit via curl from any terminal:
+
+```bash
+curl -X POST -H 'content-type: application/json' \
+  --data-binary @ethsec-submission-badge-42.json \
+  https://<hosted-api-url>/submit
+```
+
+### Flavour B — FULLY air-gapped signing machine (no network at all)
+
+Useful if policy requires the signing machine never see the public internet.
+
+1. **On an online machine:** clone + build the dApp as a static bundle.
+
+   ```bash
+   git clone https://github.com/griffgiveth/ethsec-voting-badge.git
+   cd ethsec-voting-badge
+   pnpm install
+   pnpm --filter @ethsec/web build
+   ```
+
+   Output lands in `apps/web/dist/`. Copy that directory to a USB.
+
+2. **On the air-gapped machine:** unpack the bundle and serve it locally.
+   Anything that can serve static files works — one easy option:
+
+   ```bash
+   npx --yes http-server apps/web/dist -p 5174
+   ```
+
+   Or open `apps/web/dist/index.html` directly in a browser (may need to
+   disable file:// restrictions in some browsers).
+
+3. Plug in your hardware wallet (Ledger/Trezor/Keystone/etc.) — anything
+   that can sign EIP-712 typed data without making network calls.
+
+4. Complete the flow in the browser: pick your badge (use the "Enter
+   manually" option if the auto-detect can't reach an RPC), enter the
+   voting address, tick **"Sign offline"**, and click the button. The
+   signed+encrypted JSON lands in your downloads folder.
+
+5. Transfer the JSON to an online machine (USB again). Follow step 4 of
+   Flavour A above — upload via the hosted site or curl the /submit endpoint.
+
+What crosses the air gap: the JSON blob (signed envelope + ciphertext).
+What never leaves the signing machine: your wallet's private key and
+plaintext voting address.
+
+---
+
 ## For the admin (Griff) — full lifecycle
 
 ### Step 1 — Generate your keypair (do this ONCE, on your own machine)
