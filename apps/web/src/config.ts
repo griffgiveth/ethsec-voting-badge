@@ -28,6 +28,15 @@ if (!/^0x[a-f0-9]{40}$/.test(badgeContract)) {
 
 const walletConnectProjectId = (env.VITE_WALLETCONNECT_PROJECT_ID ?? "") as string;
 
+const rpcUrl = (env.VITE_RPC_URL ?? "") as string;
+
+/**
+ * When set, used as the ML-KEM-768 public key in offline mode so the page
+ * doesn't need to fetch /config over the network. Leave unset in the hosted
+ * build — the online flow fetches /config from the API as normal.
+ */
+const encryptionPublicKeyHex = (env.VITE_ENCRYPTION_PUBLIC_KEY_HEX ?? "") as string;
+
 /** Localtunnel hosts demand a `bypass-tunnel-reminder` header on every request. */
 export const isTunnelHost = (url: string): boolean => /\.loca\.lt$/i.test(new URL(url).hostname);
 
@@ -36,6 +45,8 @@ export const APP_CONFIG = {
   chainId,
   badgeContract,
   walletConnectProjectId,
+  rpcUrl,
+  encryptionPublicKeyHex,
   isTunnel: isTunnelHost(apiBaseUrl),
 } as const;
 

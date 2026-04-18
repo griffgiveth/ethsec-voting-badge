@@ -14,12 +14,15 @@ import {
 import { getConfig, getTokenStatus, postSubmit } from "../api.js";
 
 /**
- * Orchestrator hook. Exposes the current state machine snapshot plus two
- * entry points: `start(tokenId, votingAddress)` kicks off load-config →
- * encrypt → sign → submit, and `reset()` returns to idle.
+ * Orchestrator hook for the online flow. Entry points:
+ *   - `start(tokenId, votingAddress)`: load-config → encrypt → sign → submit.
+ *   - `reset()`: back to idle.
  *
  * Wallet connection is read from wagmi — callers should block on
  * `useAccount().status === "connected"` before calling `start`.
+ *
+ * Offline signing uses its own dedicated component (OfflineApp) and is not
+ * routed through this hook.
  */
 export function useSubmission(): {
   state: SubmissionState;
@@ -29,7 +32,6 @@ export function useSubmission(): {
   const [state, dispatch] = useReducer(reduce, initialState);
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  // Guard against re-entry if the user double-clicks submit.
   const running = useRef(false);
 
   const reset = useCallback(() => {
@@ -46,7 +48,6 @@ export function useSubmission(): {
 
         dispatch({ type: "WALLET_READY" });
 
-        // 1) Load config + pre-check token usage
         const config = await getConfig();
         const status = await getTokenStatus(tokenId);
         if (status.used) {
@@ -61,7 +62,6 @@ export function useSubmission(): {
 
         dispatch({ type: "TOKEN_PICKED", tokenId, votingAddress });
 
-        // 2) Encrypt
         const publicKey = hexToBytes(config.encryptionPublicKey);
         const issuedAt = Math.floor(Date.now() / 1000);
         const expiresAt = issuedAt + 600;
@@ -82,7 +82,6 @@ export function useSubmission(): {
         } as const;
         dispatch({ type: "ENCRYPTED", encrypted });
 
-        // 3) Sign EIP-712
         const message = {
           badgeContract: config.badgeContract,
           tokenId: BigInt(tokenId),
@@ -100,7 +99,6 @@ export function useSubmission(): {
         })) as Hex;
         dispatch({ type: "SIGNED", signature });
 
-        // 4) Submit
         dispatch({ type: "SUBMITTING" });
         const res = await postSubmit({
           badgeContract: config.badgeContract,

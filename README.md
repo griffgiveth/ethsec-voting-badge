@@ -22,17 +22,90 @@ the admin after voting closes.
 
 ---
 
-## For badgeholders — how to submit a voting address
+## Two modes on the landing page
 
-1. Open the hosted URL in a normal browser (works on mobile too).
+When you open the app, you pick one of two modes:
+
+### Online mode — normal dApp flow
+
+For badgeholders signing on a regular, internet-connected machine.
+
+1. Open the hosted URL, click **Online**.
 2. **Connect Wallet** → pick the wallet that holds your badge NFT.
-3. The app reads your badge `tokenId` onchain and shows it.
-4. Enter the voting address you want recorded → click Submit.
-5. Sign the EIP-712 message. The app encrypts your address locally before
-   it leaves your device.
-6. You'll see a success checkmark. Done — you can close the tab.
+3. The app auto-detects your badge `tokenId` from onchain `Transfer` logs.
+4. Enter the voting address you want recorded.
+5. Click **Encrypt & Sign** → sign the EIP-712 message. The voting address
+   is encrypted in-browser and POSTed with the signature.
+6. You'll see a success checkmark. Done.
 
 One badge = one submission. Re-submitting from the same badge is rejected.
+
+### Offline mode — airgapped signing
+
+For badgeholders whose signing key lives on an airgapped machine. Sign the
+voting message locally, export the signed blob, and come back to an online
+machine to submit.
+
+Two sub-flows, both on the same page:
+
+**A. Sign here, submit later (or elsewhere)**
+
+1. Click **Offline** on the landing page.
+2. Fill in: holder wallet, badge token ID, voting address.
+3. Click **Encrypt & prepare message**.
+4. Pick a signing path:
+   - **Connect wallet** — uses any wallet extension present on this machine
+     (MetaMask, Rabby, Frame, or a hardware wallet plugged in). Signs via
+     wagmi's normal EIP-712 flow.
+   - **Sign externally** — copy the EIP-712 payload JSON, sign with your
+     own tool (Foundry's `cast wallet sign-typed-data`, MyEtherWallet's
+     offline message signer, an ethers.js script), paste the `0x…` signature
+     back into the form. The page verifies the signature recovers to the
+     holder wallet before allowing export.
+5. The signed blob downloads as `ethsec-submission-badge-<id>.json`.
+6. When you reach an online machine, open this same app, pick **Offline**
+   again, and use the **Submit a signed blob** section near the bottom to
+   upload the file.
+
+**B. Submit a pre-signed blob (online machine, bringing someone else's blob back)**
+
+1. Open the app on any online machine, pick **Offline**.
+2. Scroll to **Submit a signed blob**.
+3. Pick the `.json` file. The server verifies the signature + onchain badge
+   ownership and stores the submission.
+
+What crosses the air gap: the signed JSON (signature + ciphertext). What
+never leaves the signing machine: the wallet's private key and the
+plaintext voting address.
+
+### Running offline mode on a truly airgapped machine
+
+```bash
+# On an online machine:
+git clone https://github.com/griffgiveth/ethsec-voting-badge.git
+cd ethsec-voting-badge
+pnpm install
+pnpm --filter @ethsec/web build
+
+# Copy apps/web/dist/ to USB, move to the airgapped machine, then:
+npx --yes http-server apps/web/dist -p 5174
+```
+
+Open `http://localhost:5174` on the airgapped machine, pick **Offline**,
+and follow sub-flow A above.
+
+For the page to work without reaching the backend, set
+`VITE_ENCRYPTION_PUBLIC_KEY_HEX` at build time to the public key you'll
+eventually submit against. The offline page then encrypts locally instead
+of fetching `/config`.
+
+Alternative submit path from any terminal:
+
+```bash
+curl -X POST -H 'content-type: application/json' \
+  --data-binary @ethsec-submission-badge-42.json \
+  https://<hosted-api-url>/submit
+```
 
 ---
 
