@@ -32,15 +32,15 @@ export default function App(): JSX.Element {
 
         <header className="text-center mb-14 space-y-4 animate-fadeIn">
           <h1 className="font-tight text-5xl md:text-6xl font-semibold tracking-tight leading-tight">
-            Voting Badge
+            ETHSecurity Voting Badge
           </h1>
           <p className="text-xl text-dao-green font-light">
-            Private voting for ETHSecurity badge holders
+            Private voting address submission for ETHSecurity Badge holders
           </p>
           <p className="text-gray-300 text-base md:text-lg max-w-2xl mx-auto leading-relaxed pt-2">
-            Submit a voting address tied to your badge. It&apos;s encrypted in the
-            browser, decrypted offline by the admin after voting closes.
-            Your plaintext choice never leaves your device.
+            Submit a private address for exercising your voting power. It&apos;s encrypted in the 
+            browser, decrypted offline by Griff who will then send you your Voting NFT, as well as gas 
+            money and 46 FINN (tokens that will be worth 1 Finney (0.001 ETH) when donated in the QF round.
           </p>
         </header>
 
@@ -53,11 +53,11 @@ export default function App(): JSX.Element {
             title="Online"
             badge="normal"
             badgeClass="bg-dao-green/15 text-dao-green ring-dao-green/30"
-            description="Connect your wallet in this browser, sign the voting message, and submit. The fast path."
+            description="Connect your wallet in this browser, input your voting address, and submit. Like a normal dapp."
             bullets={[
               "RainbowKit + any supported wallet",
               "Auto-detects your badge tokenId onchain",
-              "One click to submit once signed",
+              "Fast and easy",
             ]}
           />
           <ModeCard
@@ -65,11 +65,11 @@ export default function App(): JSX.Element {
             title="Offline"
             badge="airgapped"
             badgeClass="bg-dao-red/15 text-dao-red ring-dao-red/30"
-            description="For signers whose keys live on an airgapped machine. Sign locally, export a blob, submit later from an online machine."
+            description="For signers whose public NFT lives on an airgapped machine. Sign locally, export a blob, submit later from an online machine."
             bullets={[
               "Run this page on an offline machine",
               "Sign via a local wallet OR copy-paste EIP-712",
-              "Upload the signed blob from any online machine",
+              "Upload the signed blob from any online machine later",
             ]}
           />
         </section>
