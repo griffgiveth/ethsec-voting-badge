@@ -3,10 +3,9 @@ import { isAddress } from "viem";
 import type { Address } from "viem";
 import { useAccount } from "wagmi";
 import { useHeldTokenIds } from "../hooks/useHeldTokenIds.js";
-import type { SubmitMode } from "../hooks/useSubmission.js";
 
 interface Props {
-  onSubmit: (tokenId: string, votingAddress: Address, mode: SubmitMode) => void;
+  onSubmit: (tokenId: string, votingAddress: Address) => void;
   disabled?: boolean;
 }
 
@@ -14,8 +13,10 @@ interface Props {
  * Collects the voting address and the badge tokenId. The tokenId is
  * auto-detected from the connected wallet's on-chain holdings (see
  * useHeldTokenIds) with a manual-override escape hatch for users whose RPC
- * can't serve log scans. Also exposes a submit-mode toggle so users can
- * sign offline and export the blob for later submission.
+ * can't serve log scans.
+ *
+ * Offline-signing lives in its own mode (OfflineApp); this component stays
+ * focused on the normal connect-wallet-and-submit-now flow.
  */
 export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
   const { address } = useAccount();
@@ -25,11 +26,8 @@ export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
   const [manualTokenId, setManualTokenId] = useState("");
   const [autoTokenId, setAutoTokenId] = useState("");
   const [votingAddress, setVotingAddress] = useState("");
-  const [exportMode, setExportMode] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Keep autoTokenId in sync with held holdings. Reset when the wallet
-  // changes to one with no badges.
   useEffect(() => {
     if (held.status !== "ready") return;
     if (held.tokenIds.length === 0) {
@@ -40,7 +38,6 @@ export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
     if (!stillHeld) setAutoTokenId(held.tokenIds[0]!);
   }, [held, autoTokenId]);
 
-  // When auto-detect errors out, nudge the user toward the manual path.
   useEffect(() => {
     if (held.status === "error" && !manualMode) setManualMode(true);
   }, [held.status, manualMode]);
@@ -58,11 +55,7 @@ export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
       return;
     }
     setErr(null);
-    onSubmit(
-      effectiveTokenId,
-      votingAddress as Address,
-      exportMode ? "offline" : "online",
-    );
+    onSubmit(effectiveTokenId, votingAddress as Address);
   };
 
   const autoBlocked =
@@ -106,24 +99,6 @@ export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
           <p className="text-xs text-white/30">Where your vote weight goes</p>
         </div>
 
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={exportMode}
-            onChange={(e) => setExportMode(e.target.checked)}
-            disabled={formDisabled}
-            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/30 checked:bg-brand-blue-500 outline-none focus:ring-1 focus:ring-brand-blue-500/40"
-          />
-          <span className="text-sm text-white/70 leading-relaxed group-hover:text-white/90">
-            <span className="font-medium">Sign offline — export signed blob</span>
-            <br />
-            <span className="text-xs text-white/40">
-              Instead of submitting now, download a JSON file you can post from a different
-              machine later. Use this if your signing wallet is air-gapped.
-            </span>
-          </span>
-        </label>
-
         {err && (
           <div className="animate-fadeIn rounded-lg bg-brand-red-500/10 border border-brand-red-500/30 px-4 py-2.5">
             <p role="alert" className="text-sm text-brand-red-500">
@@ -137,7 +112,7 @@ export function TokenInput({ onSubmit, disabled }: Props): JSX.Element {
           disabled={formDisabled}
           className="w-full rounded-xl bg-brand-green-500 hover:bg-brand-green-500/85 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 px-5 py-3.5 text-sm font-semibold tracking-wide transition-all duration-200"
         >
-          {exportMode ? "Encrypt, Sign & Download" : "Encrypt & Sign"}
+          Encrypt &amp; Sign
         </button>
       </form>
     </section>

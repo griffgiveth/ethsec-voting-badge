@@ -28,7 +28,6 @@ export type SubmissionStatus =
   | "signing"
   | "submitting"
   | "submitted"
-  | "exported"
   | "error";
 
 export interface BackendConfig {
@@ -77,7 +76,6 @@ export type SubmissionEvent =
   | { type: "SIGNED"; signature: Hex }
   | { type: "SUBMITTING" }
   | { type: "SUBMITTED"; submittedAt: string }
-  | { type: "EXPORTED" }
   | { type: "ERROR"; code: string; message: string }
   | { type: "RESET" };
 
@@ -127,12 +125,6 @@ export function reduce(
       if (state.status !== "submitting") return state;
       return { ...state, status: "submitted", submittedAt: event.submittedAt };
 
-    case "EXPORTED":
-      // Reached from the offline-signing path: the signed blob was handed
-      // to the user as a downloaded file instead of being POSTed.
-      if (state.status !== "signing") return state;
-      return { ...state, status: "exported" };
-
     case "ERROR":
       // Errors can occur from any in-flight state. From terminal states we
       // ignore them — the user must `RESET` first.
@@ -156,7 +148,7 @@ export function reduce(
 }
 
 export const isTerminal = (s: SubmissionStatus): boolean =>
-  s === "submitted" || s === "exported" || s === "error";
+  s === "submitted" || s === "error";
 
 export const isInFlight = (s: SubmissionStatus): boolean =>
   s === "encrypting" || s === "signing" || s === "submitting";
